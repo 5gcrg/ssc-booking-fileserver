@@ -1,0 +1,74 @@
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: ssc-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: sscadmin
+      MINIO_ROOT_PASSWORD: sscpassword123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ssc-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: ssc-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ssc_booking
+      MYSQL_USER: sscuser
+      MYSQL_PASSWORD: sscpassword
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "sscuser", "-psscpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - ssc-network
+
+  springboot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ssc-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ssc_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: sscuser
+      SPRING_DATASOURCE_PASSWORD: sscpassword
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: sscadmin
+      MINIO_SECRET_KEY: sscpassword123
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ssc-network
+
+networks:
+  ssc-network:
+    driver: bridge
+
+volumes:
+  minio_data:
+  mysql_data:

@@ -1,0 +1,39 @@
+minio:
+  url: http://localhost:9000
+  access-key: sscadmin
+  secret-key: sscpassword123
+  buckets:
+    documents: ssc-documents
+    templates: ssc-templates
+  presigned-url-expiry: 3600
+  max-file-size-mb: 10
+
+cors:
+  allowed-origins: http://localhost:3000
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: jdbc:mysql://localhost:3306/ssc_booking
+    username: sscuser
+    password: sscpassword
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
