@@ -82,7 +82,15 @@ public class FileStorageService {
 
     public String getPresignedDownloadUrl(String objectKey, String bucket) {
         try {
-            return minioClient.getPresignedObjectUrl(
+            // Build a client with the public URL (browser-resolvable) and pin the region
+            // to "us-east-1" so the SDK skips the region auto-detection network call —
+            // which would fail because the public hostname is unreachable from inside Docker.
+            MinioClient publicClient = MinioClient.builder()
+                .endpoint(minioProperties.getPublicUrl())
+                .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
+                .region("us-east-1")
+                .build();
+            return publicClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                     .method(Method.GET)
                     .bucket(bucket)
@@ -91,6 +99,7 @@ public class FileStorageService {
                     .build()
             );
         } catch (Exception e) {
+            log.error("Could not generate presigned URL for {}/{}: {}", bucket, objectKey, e.getMessage(), e);
             throw new FileStorageException("Could not generate file download URL.", e);
         }
     }

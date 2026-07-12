@@ -25,7 +25,7 @@ public class FileController {
     }
 
     @PostMapping("/documents/upload")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FileUploadResponse> uploadDocument(
         @RequestParam("file") MultipartFile file,
         @RequestParam("submissionId") String submissionId,
@@ -43,13 +43,13 @@ public class FileController {
     }
 
     @GetMapping("/documents/{objectKey}/url")
-    @PreAuthorize("hasAnyRole('STUDENT','MODERATOR','SSC_ADMIN','SSC_SYSTEM_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PresignedUrlResponse> getDocumentUrl(@PathVariable String objectKey) {
         return buildDocumentUrlResponse(objectKey);
     }
 
     @GetMapping("/documents/url")
-    @PreAuthorize("hasAnyRole('STUDENT','MODERATOR','SSC_ADMIN','SSC_SYSTEM_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PresignedUrlResponse> getDocumentUrlByQuery(@RequestParam("objectKey") String objectKey) {
         return buildDocumentUrlResponse(objectKey);
     }
@@ -65,7 +65,7 @@ public class FileController {
     }
 
     @PostMapping("/templates/upload")
-    @PreAuthorize("hasAnyRole('SSC_ADMIN','SSC_SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('SSC_ADMIN', 'SSC_SYSTEM_ADMIN')")
     public ResponseEntity<FileUploadResponse> uploadTemplate(
         @RequestParam("file") MultipartFile file,
         @RequestParam("templateType") String templateType,

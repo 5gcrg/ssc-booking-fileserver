@@ -20,45 +20,22 @@ services:
     networks:
       - ssc-network
 
-  mysql:
-    image: mysql:8.0
-    container_name: ssc-mysql
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: ssc_booking
-      MYSQL_USER: sscuser
-      MYSQL_PASSWORD: sscpassword
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "sscuser", "-psscpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      - ssc-network
-
-  springboot:
+  ssc-fileserver:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ssc-backend
+    container_name: ssc-fileserver
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ssc_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: sscuser
-      SPRING_DATASOURCE_PASSWORD: sscpassword
-      MINIO_URL: http://minio:9000
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-must-be-at-least-32-characters-long}
       MINIO_ACCESS_KEY: sscadmin
       MINIO_SECRET_KEY: sscpassword123
-      SPRING_PROFILES_ACTIVE: docker
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8081}
     depends_on:
-      mysql:
-        condition: service_healthy
       minio:
         condition: service_healthy
     restart: unless-stopped
@@ -71,4 +48,3 @@ networks:
 
 volumes:
   minio_data:
-  mysql_data:
