@@ -47,8 +47,7 @@ public class MinioBucketInitializer implements ApplicationRunner {
                 log.info("MinIO bucket already exists: {}", bucketName);
             }
         } catch (Exception e) {
-            log.error("Failed to initialize bucket {}: {}", bucketName, e.getMessage());
-            throw new IllegalStateException("MinIO bucket initialization failed", e);
+            log.warn("Failed to initialize bucket {}: {} (Application will continue running)", bucketName, e.getMessage());
         }
     }
 }
