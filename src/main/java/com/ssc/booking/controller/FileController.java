@@ -82,6 +82,9 @@ public class FileController {
         String presignedUrl = fileStorageService.getPresignedDocumentUrl(objectKey);
         if (presignedUrl.startsWith("/")) {
             String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            if (baseUrl.contains(".up.railway.app") && baseUrl.startsWith("http://")) {
+                baseUrl = baseUrl.replace("http://", "https://");
+            }
             presignedUrl = baseUrl + presignedUrl;
         }
         int expiresInSeconds = fileStorageService.getPresignedUrlExpirySeconds();
@@ -125,6 +128,9 @@ public class FileController {
         String presignedUrl = fileStorageService.getPresignedTemplateUrl(objectKey);
         if (presignedUrl.startsWith("/")) {
             String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            if (baseUrl.contains(".up.railway.app") && baseUrl.startsWith("http://")) {
+                baseUrl = baseUrl.replace("http://", "https://");
+            }
             presignedUrl = baseUrl + presignedUrl;
         }
         int expiresInSeconds = fileStorageService.getPresignedUrlExpirySeconds();
