@@ -29,23 +29,19 @@ public class FileController {
         @RequestParam("bucket") String bucket,
         @RequestParam("objectKey") String objectKey
     ) {
-        try {
-            java.nio.file.Path filePath = java.nio.file.Paths.get("uploads", bucket, objectKey).normalize();
-            if (!java.nio.file.Files.exists(filePath)) {
-                return ResponseEntity.notFound().build();
-            }
-            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
-            String contentType = bucket.contains("template") 
-                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                : "application/pdf";
-            
-            return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filePath.getFileName().toString() + "\"")
-                .body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+        org.springframework.core.io.Resource resource = fileStorageService.loadAsResource(bucket, objectKey);
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
         }
+        String contentType = bucket.contains("template")
+            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            : "application/pdf";
+        String filename = fileStorageService.resolveLocalPath(bucket, objectKey).getFileName().toString();
+
+        return ResponseEntity.ok()
+            .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+            .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+            .body(resource);
     }
 
     @PostMapping("/documents/upload")

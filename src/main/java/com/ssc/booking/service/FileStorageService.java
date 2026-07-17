@@ -10,11 +10,17 @@ import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -124,8 +130,7 @@ public class FileStorageService {
     public void deleteDocument(String objectKey) {
         if (!isMinioEnabled()) {
             try {
-                java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", minioProperties.getBuckets().getDocuments(), objectKey);
-                java.nio.file.Files.deleteIfExists(targetPath);
+                Files.deleteIfExists(resolveLocalPath(minioProperties.getBuckets().getDocuments(), objectKey));
                 log.info("Deleted local document objectKey={}", objectKey);
             } catch (Exception e) {
                 throw new FileStorageException("Could not delete document.", e);
@@ -148,8 +153,7 @@ public class FileStorageService {
 
     public boolean fileExists(String bucket, String objectKey) {
         if (!isMinioEnabled()) {
-            java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", bucket, objectKey);
-            return java.nio.file.Files.exists(targetPath);
+            return Files.exists(resolveLocalPath(bucket, objectKey));
         }
         try {
             minioClient.statObject(
@@ -170,12 +174,37 @@ public class FileStorageService {
         return minioProperties.getPresignedUrlExpiry();
     }
 
+    public Path resolveLocalPath(String bucket, String objectKey) {
+        if (!bucket.equals(minioProperties.getBuckets().getDocuments())
+                && !bucket.equals(minioProperties.getBuckets().getTemplates())) {
+            throw new FileValidationException("Unknown bucket.");
+        }
+        Path base = Paths.get("uploads").toAbsolutePath().normalize();
+        Path resolved = base.resolve(bucket).resolve(objectKey).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new FileValidationException("Invalid object key.");
+        }
+        return resolved;
+    }
+
+    public Resource loadAsResource(String bucket, String objectKey) {
+        Path path = resolveLocalPath(bucket, objectKey);
+        if (!Files.exists(path)) {
+            return null;
+        }
+        try {
+            return new UrlResource(path.toUri());
+        } catch (Exception e) {
+            throw new FileStorageException("Could not read file.", e);
+        }
+    }
+
     private void upload(MultipartFile file, String bucket, String objectKey, String contentType) {
         if (!isMinioEnabled()) {
             try {
-                java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", bucket, objectKey);
-                java.nio.file.Files.createDirectories(targetPath.getParent());
-                java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Path targetPath = resolveLocalPath(bucket, objectKey);
+                Files.createDirectories(targetPath.getParent());
+                Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
                 log.info("Stored file locally at: {}", targetPath.toAbsolutePath());
             } catch (Exception e) {
                 log.error("Failed to store file locally: {}", e.getMessage(), e);
