@@ -1,34 +1,35 @@
-# SSC Event Booking System Backend
+# SSC Event Booking System — File Server
 
-Spring Boot backend foundation for the SSC Event Booking System file storage flow. The full local backend stack runs with Docker Compose: Spring Boot, MinIO, and MySQL.
+Spring Boot service handling the SSC Event Booking System's file storage flow (MinIO-backed document and template storage). Runs Windows-native, no Docker — see `ssc-system/INSTRUCTIONS.md` for the full multi-service setup and start order (MySQL → MinIO → File Server → Main API → Frontend).
 
 ## What This Includes
 
-- Spring Boot 3 backend container
-- MinIO and MySQL local services with Docker Compose
-- One-command full stack startup
 - MinIO bucket initialization on application startup
 - PDF document upload support
 - DOCX template upload support
 - Presigned download URL generation
 - File validation and storage exception handling
 - CORS setup for the Next.js frontend
-- Actuator health checks for Docker
+- Actuator health checks
 
-This project does not yet include authentication implementation, submission workflows, frontend changes, or `DocumentVersion` persistence. The file API is ready for those layers to plug in later.
-
-## Running The Full Stack
+## Running
 
 ### Prerequisites
 
-- Docker Desktop installed and running
+- Java 21 (Temurin) and Maven 3.9+
+- MySQL 8.0 running (`ssc_booking` database) and MinIO running — see `ssc-system/INSTRUCTIONS.md` §1–3
 
-No local Java or Maven install is required for the Docker path. The Spring Boot app is built inside the Docker image.
-
-### Start Everything
+### Build and start
 
 ```bash
-docker compose up -d
+mvn clean package -DskipTests
+java -jar target/ssc-booking-0.0.1-SNAPSHOT.jar
+```
+
+Or, for hot-restart while coding:
+
+```bash
+mvn spring-boot:run
 ```
 
 ### Services
@@ -63,50 +64,6 @@ Username: sscuser
 Password: sscpassword
 ```
 
-### View Logs
-
-```bash
-docker compose logs -f
-```
-
-Spring Boot only:
-
-```bash
-docker compose logs -f springboot
-```
-
-MinIO only:
-
-```bash
-docker compose logs -f minio
-```
-
-MySQL only:
-
-```bash
-docker compose logs -f mysql
-```
-
-### Stop Everything
-
-```bash
-docker compose down
-```
-
-### Fresh Start
-
-This stops all containers and deletes local MinIO/MySQL data volumes:
-
-```bash
-docker compose down -v
-```
-
-### Rebuild Spring Boot After Code Changes
-
-```bash
-docker compose up -d --build springboot
-```
-
 ### Test The API Health Check
 
 ```bash
@@ -117,46 +74,6 @@ Expected response:
 
 ```json
 {"status":"UP"}
-```
-
-## Local Spring Boot Development Option
-
-If you want faster app restarts while coding, run only MinIO and MySQL in Docker:
-
-```bash
-docker compose up -d minio mysql
-```
-
-Then run Spring Boot locally:
-
-```bash
-mvn spring-boot:run
-```
-
-If a Maven wrapper is added later, use:
-
-```bash
-./mvnw spring-boot:run
-```
-
-This local path requires Java 21 and Maven 3.8+ installed on your machine.
-
-## Docker Networking Notes
-
-Inside Docker, services talk to each other by service name:
-
-```text
-Spring Boot -> MySQL: mysql:3306
-Spring Boot -> MinIO: http://minio:9000
-```
-
-From your Mac browser or terminal, use localhost because ports are mapped to the host:
-
-```text
-Spring Boot API: http://localhost:8080
-MinIO S3 API: http://localhost:9000
-MinIO Console: http://localhost:9001
-MySQL: localhost:3306
 ```
 
 ## Buckets
@@ -174,12 +91,6 @@ Local configuration lives in:
 
 ```text
 src/main/resources/application.yml
-```
-
-Docker configuration lives in:
-
-```text
-src/main/resources/application-docker.yml
 ```
 
 Production overrides live in:
@@ -315,10 +226,6 @@ Filenames are sanitized before storage. Spaces are converted to underscores, pat
 ## Project Structure
 
 ```text
-Dockerfile
-.dockerignore
-docker-compose.yml
-docker-compose.dev.yml
 src/main/java/com/ssc/booking/
   config/
     CorsConfig.java
@@ -341,7 +248,6 @@ src/main/java/com/ssc/booking/
   SscBookingApplication.java
 src/main/resources/
   application.yml
-  application-docker.yml
   application-prod.yml
 ```
 

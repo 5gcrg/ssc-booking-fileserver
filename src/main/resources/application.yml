@@ -10,8 +10,8 @@ spring:
 minio:
   url: http://localhost:9000
   public-url: http://localhost:9000
-  access-key: sscadmin
-  secret-key: sscpassword123
+  access-key: ${MINIO_ACCESS_KEY:sscadmin}
+  secret-key: ${MINIO_SECRET_KEY:sscpassword123}
   buckets:
     documents: ssc-documents
     templates: ssc-templates
@@ -20,7 +20,7 @@ minio:
 
 app:
   jwt:
-    secret: dev-secret-key-change-in-production-must-be-at-least-32-characters-long
+    secret: ${JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-32-characters-long}
     cookie-name: ssc_auth_token
   cors:
     allowed-origins:

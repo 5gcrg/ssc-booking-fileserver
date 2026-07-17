@@ -1,8 +1,0 @@
-services:
-  minio:
-    healthcheck:
-      disable: true
-    restart: "no"
-
-  mysql:
-    restart: "no"
