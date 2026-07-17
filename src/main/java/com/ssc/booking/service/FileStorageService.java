@@ -35,6 +35,12 @@ public class FileStorageService {
         this.minioProperties = minioProperties;
     }
 
+    private boolean isMinioEnabled() {
+        return minioProperties.getUrl() != null 
+            && !minioProperties.getUrl().isEmpty() 
+            && !minioProperties.getUrl().contains("dummy");
+    }
+
     public String uploadDocument(
         MultipartFile file,
         String submissionId,
@@ -81,6 +87,9 @@ public class FileStorageService {
     }
 
     public String getPresignedDownloadUrl(String objectKey, String bucket) {
+        if (!isMinioEnabled()) {
+            return "/api/v1/files/download?bucket=" + bucket + "&objectKey=" + objectKey;
+        }
         try {
             // Build a client with the public URL (browser-resolvable) and pin the region
             // to "us-east-1" so the SDK skips the region auto-detection network call —
@@ -113,6 +122,16 @@ public class FileStorageService {
     }
 
     public void deleteDocument(String objectKey) {
+        if (!isMinioEnabled()) {
+            try {
+                java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", minioProperties.getBuckets().getDocuments(), objectKey);
+                java.nio.file.Files.deleteIfExists(targetPath);
+                log.info("Deleted local document objectKey={}", objectKey);
+            } catch (Exception e) {
+                throw new FileStorageException("Could not delete document.", e);
+            }
+            return;
+        }
         try {
             minioClient.removeObject(
                 RemoveObjectArgs.builder()
@@ -128,6 +147,10 @@ public class FileStorageService {
     }
 
     public boolean fileExists(String bucket, String objectKey) {
+        if (!isMinioEnabled()) {
+            java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", bucket, objectKey);
+            return java.nio.file.Files.exists(targetPath);
+        }
         try {
             minioClient.statObject(
                 StatObjectArgs.builder()
@@ -148,6 +171,18 @@ public class FileStorageService {
     }
 
     private void upload(MultipartFile file, String bucket, String objectKey, String contentType) {
+        if (!isMinioEnabled()) {
+            try {
+                java.nio.file.Path targetPath = java.nio.file.Paths.get("uploads", bucket, objectKey);
+                java.nio.file.Files.createDirectories(targetPath.getParent());
+                java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                log.info("Stored file locally at: {}", targetPath.toAbsolutePath());
+            } catch (Exception e) {
+                log.error("Failed to store file locally: {}", e.getMessage(), e);
+                throw new FileStorageException("File upload failed. Please try again.", e);
+            }
+            return;
+        }
         try {
             minioClient.putObject(
                 PutObjectArgs.builder()

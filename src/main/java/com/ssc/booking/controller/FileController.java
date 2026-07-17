@@ -24,6 +24,30 @@ public class FileController {
         this.fileStorageService = fileStorageService;
     }
 
+    @GetMapping("/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadFile(
+        @RequestParam("bucket") String bucket,
+        @RequestParam("objectKey") String objectKey
+    ) {
+        try {
+            java.nio.file.Path filePath = java.nio.file.Paths.get("uploads", bucket, objectKey).normalize();
+            if (!java.nio.file.Files.exists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
+            String contentType = bucket.contains("template") 
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                : "application/pdf";
+            
+            return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filePath.getFileName().toString() + "\"")
+                .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PostMapping("/documents/upload")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FileUploadResponse> uploadDocument(
@@ -56,6 +80,10 @@ public class FileController {
 
     private ResponseEntity<PresignedUrlResponse> buildDocumentUrlResponse(String objectKey) {
         String presignedUrl = fileStorageService.getPresignedDocumentUrl(objectKey);
+        if (presignedUrl.startsWith("/")) {
+            String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            presignedUrl = baseUrl + presignedUrl;
+        }
         int expiresInSeconds = fileStorageService.getPresignedUrlExpirySeconds();
         return ResponseEntity.ok(new PresignedUrlResponse(
             presignedUrl,
@@ -95,6 +123,10 @@ public class FileController {
 
     private ResponseEntity<PresignedUrlResponse> buildTemplateUrlResponse(String objectKey) {
         String presignedUrl = fileStorageService.getPresignedTemplateUrl(objectKey);
+        if (presignedUrl.startsWith("/")) {
+            String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            presignedUrl = baseUrl + presignedUrl;
+        }
         int expiresInSeconds = fileStorageService.getPresignedUrlExpirySeconds();
         return ResponseEntity.ok(new PresignedUrlResponse(
             presignedUrl,
