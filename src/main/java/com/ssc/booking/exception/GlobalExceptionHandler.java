@@ -32,6 +32,26 @@ public class GlobalExceptionHandler {
             ));
     }
 
+    @ExceptionHandler(FilePathViolationException.class)
+    public ResponseEntity<ErrorResponse> handleFilePathViolation(FilePathViolationException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(new ErrorResponse(
+                "PATH_VIOLATION",
+                "Invalid file path.",
+                HttpStatus.FORBIDDEN.value()
+            ));
+    }
+
+    @ExceptionHandler(ProjectFileNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProjectFileNotFound(ProjectFileNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse(
+                "FILE_NOT_FOUND",
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND.value()
+            ));
+    }
+
     @ExceptionHandler(FileValidationException.class)
     public ResponseEntity<ErrorResponse> handleFileValidation(FileValidationException ex) {
         return ResponseEntity.badRequest()
@@ -57,7 +77,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
             .body(new ErrorResponse(
                 "FILE_TOO_LARGE",
-                "File size exceeds the 10MB limit.",
+                "File size exceeds the allowed limit.",
                 HttpStatus.BAD_REQUEST.value()
             ));
     }

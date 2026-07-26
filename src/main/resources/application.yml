@@ -15,8 +15,13 @@ minio:
   buckets:
     documents: ssc-documents
     templates: ssc-templates
+    projects: ssc-projects
   presigned-url-expiry: 3600
   max-file-size-mb: 10
+  max-project-file-size-mb: ${MAX_PROJECT_FILE_SIZE_MB:25}
+  # Extension denylist for project uploads (files are only ever served via presigned MinIO
+  # URLs, never from the app origin, so a denylist of executables is the right policy here).
+  blocked-extensions: exe,dll,msi,bat,cmd,com,scr,pif,vbs,ps1,sh
 
 app:
   jwt:
@@ -24,6 +29,26 @@ app:
     cookie-name: ssc_auth_token
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
+  integration:
+    clients:
+      # Per-external-service API keys for the read-write /api/v1/integration/files surface.
+      # Each client is confined to projects/<project-folder>/ in the ssc-projects bucket.
+      # Slots with a blank api-key are ignored. Env var names are deliberately distinct from
+      # the backend's MASTERLIST_CLIENT_* — both services bind prefix "app" from one shell.
+      - name: ${PROJECT_CLIENT_1_NAME:}
+        api-key: ${PROJECT_CLIENT_1_KEY:}
+        project-folder: ${PROJECT_CLIENT_1_FOLDER:}
+      - name: ${PROJECT_CLIENT_2_NAME:}
+        api-key: ${PROJECT_CLIENT_2_KEY:}
+        project-folder: ${PROJECT_CLIENT_2_FOLDER:}
+      - name: ${PROJECT_CLIENT_3_NAME:}
+        api-key: ${PROJECT_CLIENT_3_KEY:}
+        project-folder: ${PROJECT_CLIENT_3_FOLDER:}
+    rate-limit:
+      enabled: true
+      capacity: ${INTEGRATION_RATE_LIMIT_CAPACITY:60}
+      refill-tokens: ${INTEGRATION_RATE_LIMIT_REFILL_TOKENS:60}
+      refill-period-seconds: ${INTEGRATION_RATE_LIMIT_REFILL_PERIOD_SECONDS:60}
 
 management:
   endpoints:

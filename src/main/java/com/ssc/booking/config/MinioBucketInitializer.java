@@ -26,6 +26,7 @@ public class MinioBucketInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         initBucket(minioProperties.getBuckets().getDocuments());
         initBucket(minioProperties.getBuckets().getTemplates());
+        initBucket(minioProperties.getBuckets().getProjects());
     }
 
     private void initBucket(String bucketName) {

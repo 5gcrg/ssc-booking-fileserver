@@ -3,6 +3,8 @@ package com.ssc.booking.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 @ConfigurationProperties(prefix = "minio")
 public class MinioProperties {
@@ -14,6 +16,8 @@ public class MinioProperties {
     private Buckets buckets = new Buckets();
     private int presignedUrlExpiry;
     private int maxFileSizeMb;
+    private int maxProjectFileSizeMb = 25;
+    private List<String> blockedExtensions = List.of();
 
     public String getUrl() {
         return url;
@@ -71,9 +75,26 @@ public class MinioProperties {
         this.maxFileSizeMb = maxFileSizeMb;
     }
 
+    public int getMaxProjectFileSizeMb() {
+        return maxProjectFileSizeMb;
+    }
+
+    public void setMaxProjectFileSizeMb(int maxProjectFileSizeMb) {
+        this.maxProjectFileSizeMb = maxProjectFileSizeMb;
+    }
+
+    public List<String> getBlockedExtensions() {
+        return blockedExtensions;
+    }
+
+    public void setBlockedExtensions(List<String> blockedExtensions) {
+        this.blockedExtensions = blockedExtensions;
+    }
+
     public static class Buckets {
         private String documents;
         private String templates;
+        private String projects;
 
         public String getDocuments() {
             return documents;
@@ -89,6 +110,14 @@ public class MinioProperties {
 
         public void setTemplates(String templates) {
             this.templates = templates;
+        }
+
+        public String getProjects() {
+            return projects;
+        }
+
+        public void setProjects(String projects) {
+            this.projects = projects;
         }
     }
 }

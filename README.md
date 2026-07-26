@@ -83,7 +83,11 @@ On startup, the application checks MinIO and creates these buckets if needed:
 ```text
 ssc-documents
 ssc-templates
+ssc-projects
 ```
+
+`ssc-projects` is reserved for external integration clients (see **Project Storage API**
+below) and is deliberately separate from the document/template buckets.
 
 ## Configuration
 
@@ -223,11 +227,51 @@ Template uploads must be:
 
 Filenames are sanitized before storage. Spaces are converted to underscores, path traversal characters are removed, and names are capped at 200 characters.
 
+## Project Storage API (external integrations, X-API-Key)
+
+Machine-to-machine file storage for external services (e.g. other teams' apps). Each client
+gets an API key and a dedicated folder; **every operation is confined to
+`projects/<project-folder>/` in the `ssc-projects` bucket** — any path that tries to escape it
+(traversal, absolute paths, backslashes, `%`, control characters) is rejected with
+`403 PATH_VIOLATION`. Keys in requests and responses are always relative to the client's
+folder; callers never see or supply the folder itself.
+
+Clients are configured via `app.integration.clients` (env vars `PROJECT_CLIENT_n_NAME` /
+`_KEY` / `_FOLDER`). The registry is validated at startup (fail-fast on missing/unsafe
+folders or duplicates); only client names are logged, never keys. Requests are rate-limited
+per client (`app.integration.rate-limit`, default 60/min, `429` + `Retry-After`).
+
+Auth is the `X-API-Key` header. **No CORS entry exists for this path by design** — it is
+server-to-server only; browsers cannot call it cross-origin.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/integration/files` | Upload/overwrite (multipart: `file`, `path=builds/v1/app.zip`) → `201` with `overwritten` flag |
+| GET | `/api/v1/integration/files/url?path=…` | Presigned download URL (`404 FILE_NOT_FOUND` if missing) |
+| GET | `/api/v1/integration/files?prefix=…&maxKeys=…&startAfter=…` | List (relative keys, `truncated` + `nextStartAfter` pagination) |
+| DELETE | `/api/v1/integration/files?path=…` | Delete → `204` always (idempotent, including for missing keys) |
+
+Paths always travel as query/form params (never path variables) so slashes survive routing.
+
+Upload rules: max size `minio.max-project-file-size-mb` (default 25 MB, must stay below the
+50 MB servlet multipart ceiling); extension denylist `minio.blocked-extensions` (executables —
+files are only ever served via presigned MinIO URLs, never from the app origin); the declared
+content type is stored but never trusted for validation.
+
+Errors: `401 API_KEY_MISSING`/`NOT_CONFIGURED`, `403 API_KEY_INVALID`/`PATH_VIOLATION`,
+`400 FILE_VALIDATION_ERROR`, `404 FILE_NOT_FOUND`, `429 RATE_LIMITED`.
+
+> **Presigned URL reachability:** download URLs embed `minio.public-url` and the signature
+> binds to that exact host. External callers must be able to reach that host from *their*
+> network — set `MINIO_PUBLIC_URL` to an address reachable by the integration client, not
+> `localhost`.
+
 ## Project Structure
 
 ```text
 src/main/java/com/ssc/booking/
   config/
+    AppProperties.java
     CorsConfig.java
     MinioBucketInitializer.java
     MinioConfig.java
@@ -235,16 +279,29 @@ src/main/java/com/ssc/booking/
     SecurityConfig.java
   controller/
     FileController.java
+    IntegrationFileController.java
   dto/
     ErrorResponse.java
     FileUploadResponse.java
     PresignedUrlResponse.java
+    ProjectFileInfo.java
+    ProjectFileListResponse.java
+    ProjectFileUploadResponse.java
   exception/
+    FilePathViolationException.java
     FileStorageException.java
     FileValidationException.java
     GlobalExceptionHandler.java
+    ProjectFileNotFoundException.java
+  security/
+    IntegrationApiKeyFilter.java
+    IntegrationClientRegistry.java
+    JwtAuthenticationFilter.java
+    JwtService.java
   service/
     FileStorageService.java
+    ObjectKeySanitizer.java
+    ProjectFileStorageService.java
   SscBookingApplication.java
 src/main/resources/
   application.yml

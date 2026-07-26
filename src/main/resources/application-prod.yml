@@ -1,3 +1,5 @@
+# Project-storage integration clients are configured via the PROJECT_CLIENT_n_NAME/_KEY/_FOLDER
+# env vars consumed by the base application.yml.
 minio:
   url: ${MINIO_URL}
   access-key: ${MINIO_ACCESS_KEY}

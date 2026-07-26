@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -25,7 +24,6 @@ public class FileStorageService {
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
     private static final String PDF_CONTENT_TYPE = "application/pdf";
     private static final String DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    private static final int MAX_FILENAME_LENGTH = 200;
 
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
@@ -185,37 +183,10 @@ public class FileStorageService {
     }
 
     private String sanitizeFilename(String filename) {
-        String cleaned = StringUtils.cleanPath(Objects.toString(filename, "file"));
-        cleaned = cleaned.replace("..", "")
-            .replaceAll("[/\\\\]+", "")
-            .replaceAll("\\s+", "_")
-            .replaceAll("[^A-Za-z0-9._-]", "_");
-
-        if (cleaned.isBlank() || cleaned.equals(".") || cleaned.equals("_")) {
-            cleaned = "file";
-        }
-
-        if (cleaned.length() <= MAX_FILENAME_LENGTH) {
-            return cleaned;
-        }
-
-        int extensionIndex = cleaned.lastIndexOf('.');
-        if (extensionIndex > 0) {
-            String extension = cleaned.substring(extensionIndex);
-            int baseLength = Math.max(1, MAX_FILENAME_LENGTH - extension.length());
-            return cleaned.substring(0, Math.min(baseLength, extensionIndex)) + extension;
-        }
-        return cleaned.substring(0, MAX_FILENAME_LENGTH);
+        return ObjectKeySanitizer.sanitizeFilename(filename);
     }
 
     private String sanitizeObjectSegment(String segment) {
-        String cleaned = Objects.toString(segment, "")
-            .trim()
-            .replaceAll("\\s+", "_")
-            .replaceAll("[^A-Za-z0-9._-]", "_");
-        if (cleaned.isBlank()) {
-            throw new FileValidationException("Storage path values must not be blank.");
-        }
-        return cleaned;
+        return ObjectKeySanitizer.sanitizeObjectSegment(segment);
     }
 }

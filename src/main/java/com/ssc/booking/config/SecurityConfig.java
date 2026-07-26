@@ -1,5 +1,8 @@
 package com.ssc.booking.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssc.booking.security.IntegrationApiKeyFilter;
+import com.ssc.booking.security.IntegrationClientRegistry;
 import com.ssc.booking.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,10 +26,22 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AppProperties appProperties;
+    private final IntegrationClientRegistry integrationClientRegistry;
+    private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, AppProperties appProperties) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          AppProperties appProperties,
+                          IntegrationClientRegistry integrationClientRegistry,
+                          ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.appProperties = appProperties;
+        this.integrationClientRegistry = integrationClientRegistry;
+        this.objectMapper = objectMapper;
+    }
+
+    @Bean
+    public IntegrationApiKeyFilter integrationApiKeyFilter() {
+        return new IntegrationApiKeyFilter(integrationClientRegistry, appProperties, objectMapper);
     }
 
     @Bean
@@ -38,9 +53,13 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // No user session/JWT applies to this machine-to-machine path — access
+                        // is gated entirely by IntegrationApiKeyFilter, not Spring Security roles.
+                        .requestMatchers("/api/v1/integration/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(integrationApiKeyFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
