@@ -49,10 +49,14 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.disable())
+                )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/files/download").permitAll()
                         // No user session/JWT applies to this machine-to-machine path — access
                         // is gated entirely by IntegrationApiKeyFilter, not Spring Security roles.
                         .requestMatchers("/api/v1/integration/files/**").permitAll()
