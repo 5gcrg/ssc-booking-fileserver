@@ -34,7 +34,7 @@ mvn spring-boot:run
 
 ### Services
 
-Spring Boot API:
+Spring Boot API (override with the `FILESERVER_PORT` env var):
 
 ```text
 http://localhost:8080
